@@ -16,7 +16,8 @@
   <button onclick="installFirmware()">2. Обновить прошивку</button>
 
   <p id="log">Готово к подключению...</p>
-  <p id="version">Текущая версия: <span id="ver">не определена</span></p>
+  <p id="version">Текущая версия прошивки: <span id="ver">не определена</span></p>
+  <p style="color: gray; font-size: 0.9em;">Версия загрузочной страницы: <strong>v1.0.1</strong></p>
 
   <script type="module">
     let port;
@@ -47,7 +48,6 @@
 
         await reader.cancel().catch(() => {});
         reader.releaseLock();
-
         await readableStreamClosed.catch(() => {});
         await port.close();
 
