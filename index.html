@@ -35,10 +35,9 @@
         await writer.write(encoder.encode("boot\\n"));
         writer.releaseLock();
 
-        document.getElementById("log").textContent = "Команда 'boot' отправлена. Перезагрузка...";
-        
-        // Пытаемся прочитать версию
-        const { value, done } = await reader.read();
+        document.getElementById("log").textContent = "Команда 'boot' отправлена. Ожидаем ответ...";
+
+        const { value } = await reader.read();
         if (value && value.includes("VERSION")) {
           const match = value.match(/VERSION[:\\s]*(.+)/);
           if (match) {
@@ -46,8 +45,13 @@
           }
         }
 
-        await reader.cancel();
+        await reader.cancel().catch(() => {});
+        reader.releaseLock();
+
+        await readableStreamClosed.catch(() => {});
         await port.close();
+
+        document.getElementById("log").textContent = "Готово. Перезапуск завершён.";
       } catch (e) {
         document.getElementById("log").textContent = "Ошибка: " + e;
       }
