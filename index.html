@@ -6,7 +6,7 @@
   <style>
     body { font-family: sans-serif; padding: 2em; background-color: #f4f4f4; }
     button { font-size: 1.2em; padding: 1em; margin: 1em 0; width: 100%; max-width: 300px; }
-    #log, #version { font-family: monospace; color: #333; }
+    #log, #version { font-family: monospace; color: #222; background: #eee; padding: 1em; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
   </style>
 </head>
 <body>
@@ -15,9 +15,10 @@
   <button onclick="sendBoot()">1. Войти в режим прошивки</button><br>
   <button onclick="installFirmware()">2. Обновить прошивку</button>
 
-  <p id="log">Готово к подключению...</p>
   <p id="version">Текущая версия прошивки: <span id="ver">не определена</span></p>
-  <p style="color: gray; font-size: 0.9em;">Версия загрузочной страницы: <strong>v1.0.1</strong></p>
+  <p style="color: gray; font-size: 0.9em;">Версия загрузочной страницы: <strong>v1.0.4</strong></p>
+
+  <pre id="log">Готово к подключению...</pre>
 
   <script type="module">
     let port;
@@ -36,13 +37,21 @@
         await writer.write(encoder.encode("boot\\n"));
         writer.releaseLock();
 
-        document.getElementById("log").textContent = "Команда 'boot' отправлена. Ожидаем ответ...";
+        document.getElementById("log").textContent = "";
 
-        const { value } = await reader.read();
-        if (value && value.includes("VERSION")) {
-          const match = value.match(/VERSION[:\\s]*(.+)/);
-          if (match) {
-            document.getElementById("ver").textContent = match[1].trim();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) {
+            document.getElementById("log").textContent += value;
+
+            // Попытка извлечь версию прошивки
+            const match = value.match(/VERSION[:\s]*(.+)/);
+            if (match) {
+              document.getElementById("ver").textContent = match[1].trim();
+            }
+
+            document.getElementById("log").scrollTop = 10000;
           }
         }
 
@@ -51,7 +60,6 @@
         await readableStreamClosed.catch(() => {});
         await port.close();
 
-        document.getElementById("log").textContent = "Готово. Перезапуск завершён.";
       } catch (e) {
         document.getElementById("log").textContent = "Ошибка: " + e;
       }
