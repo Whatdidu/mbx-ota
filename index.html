@@ -1,12 +1,12 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>ESP32-C3 USB OTA</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; }
+    body { font-family: sans-serif; padding: 2em; background-color: #f4f4f4; }
     button { font-size: 1.2em; padding: 1em; margin: 1em 0; width: 100%; max-width: 300px; }
+    #log, #version { font-family: monospace; color: #333; }
   </style>
 </head>
 <body>
@@ -15,33 +15,51 @@
   <button onclick="sendBoot()">1. Войти в режим прошивки</button><br>
   <button onclick="installFirmware()">2. Обновить прошивку</button>
 
-  <p id="log"></p>
+  <p id="log">Готово к подключению...</p>
+  <p id="version">Текущая версия: <span id="ver">не определена</span></p>
 
   <script type="module">
     let port;
 
-    async function sendBoot() {
+    window.sendBoot = async function () {
       try {
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 115200 });
+
+        const textDecoder = new TextDecoderStream();
+        const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+        const reader = textDecoder.readable.getReader();
+
         const writer = port.writable.getWriter();
         const encoder = new TextEncoder();
-        await writer.write(encoder.encode("boot\n"));
+        await writer.write(encoder.encode("boot\\n"));
         writer.releaseLock();
+
         document.getElementById("log").textContent = "Команда 'boot' отправлена. Перезагрузка...";
+        
+        // Пытаемся прочитать версию
+        const { value, done } = await reader.read();
+        if (value && value.includes("VERSION")) {
+          const match = value.match(/VERSION[:\\s]*(.+)/);
+          if (match) {
+            document.getElementById("ver").textContent = match[1].trim();
+          }
+        }
+
+        await reader.cancel();
         await port.close();
       } catch (e) {
         document.getElementById("log").textContent = "Ошибка: " + e;
       }
-    }
+    };
 
-    async function installFirmware() {
+    window.installFirmware = async function () {
       import("https://unpkg.com/esp-web-tools@9.0.2/dist/web/install-button.js?module").then(() => {
         const el = document.createElement("esp-web-install-button");
         el.manifest = "firmware/manifest.json";
         document.body.appendChild(el);
       });
-    }
+    };
   </script>
 </body>
 </html>
