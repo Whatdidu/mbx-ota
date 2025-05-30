@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -16,7 +17,7 @@
   <button onclick="installFirmware()">2. Обновить прошивку</button>
 
   <p id="version">Текущая версия прошивки: <span id="ver">не определена</span></p>
-  <p style="color: gray; font-size: 0.9em;">Версия загрузочной страницы: <strong>v1.0.4</strong></p>
+  <p style="color: gray; font-size: 0.9em;">Версия загрузочной страницы: <strong>v1.0.5</strong></p>
 
   <pre id="log">Готово к подключению...</pre>
 
@@ -34,7 +35,7 @@
 
         const writer = port.writable.getWriter();
         const encoder = new TextEncoder();
-        await writer.write(encoder.encode("boot\\n"));
+        await writer.write(encoder.encode("boot\n"));
         writer.releaseLock();
 
         document.getElementById("log").textContent = "";
@@ -45,7 +46,6 @@
           if (value) {
             document.getElementById("log").textContent += value;
 
-            // Попытка извлечь версию прошивки
             const match = value.match(/VERSION[:\s]*(.+)/);
             if (match) {
               document.getElementById("ver").textContent = match[1].trim();
@@ -58,7 +58,8 @@
         await reader.cancel().catch(() => {});
         reader.releaseLock();
         await readableStreamClosed.catch(() => {});
-        await port.close();
+        await port.close().catch(() => {});
+        port = null;
 
       } catch (e) {
         document.getElementById("log").textContent = "Ошибка: " + e;
@@ -66,6 +67,14 @@
     };
 
     window.installFirmware = async function () {
+      if (port && port.readable) {
+        try {
+          await port.close();
+        } catch (e) {
+          console.warn("Ошибка при закрытии порта перед OTA:", e);
+        }
+      }
+
       import("https://unpkg.com/esp-web-tools@9.0.2/dist/web/install-button.js?module").then(() => {
         const el = document.createElement("esp-web-install-button");
         el.manifest = "firmware/manifest.json";
